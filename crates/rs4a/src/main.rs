@@ -1,34 +1,36 @@
 #![forbid(unsafe_code)]
+use futures_util::{pin_mut, stream::StreamExt};
+use mdns::{Error, Record, RecordKind};
+use std::{net::IpAddr, time::Duration};
 
-use clap::{Parser, Subcommand};
 
-use crate::commands::discover_devices::DiscoverDevicesCommand;
-
-mod commands;
-
-#[derive(Parser)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-impl Cli {
-    pub async fn exec(self) -> anyhow::Result<()> {
-        match self.command {
-            Commands::DiscoverDevices(cmd) => cmd.exec().await?,
-        }
-        Ok(())
-    }
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Discover devices on the local network
-    DiscoverDevices(DiscoverDevicesCommand),
-}
+const SERVICE_NAME: &'static str = "_axis-video._tcp.local";
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    env_logger::init();
-    Cli::parse().exec().await
+async fn main() -> Result<(), Error> {
+    let stream = mdns::discover::all(SERVICE_NAME, Duration::from_secs(1))?.listen();
+    pin_mut!(stream);
+
+    println!("Listening on {}", SERVICE_NAME);
+    while let Some(Ok(response)) = stream.next().await {
+        let addr = response.records()
+            .filter_map(self::to_ip_addr)
+            .next();
+
+        if let Some(addr) = addr {
+            println!("found cast device at {}", addr);
+        } else {
+            println!("cast device does not advertise address");
+        }
+    }
+
+    Ok(())
+}
+
+fn to_ip_addr(record: &Record) -> Option<IpAddr> {
+    match record.kind {
+        RecordKind::A(addr) => Some(addr.into()),
+        RecordKind::AAAA(addr) => Some(addr.into()),
+        _ => None,
+    }
 }

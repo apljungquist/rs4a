@@ -5,15 +5,14 @@ in
 
 pkgs.mkShellNoCC {
   packages = with pkgs; [
-    avahi
     cargo
     clang
     clippy
     fd
     git
     llvmPackages.libclang
-    mkhelp
     nixfmt-rfc-style
+    rsync
     rustc
     rustfmt
   ];
