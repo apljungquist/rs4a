@@ -525,6 +525,7 @@ dependencies = [
  "log",
  "rs4a-bin-utils",
  "rs4a-device-manager",
+ "rs4a-fimage",
  "rs4a-firmware-inventory",
  "rs4a-vapix",
  "semver",

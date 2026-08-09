@@ -1,10 +1,13 @@
 use std::{
     cmp::Ordering,
+    fs::File,
+    io::BufReader,
     path::{Path, PathBuf},
 };
 
 use anyhow::Context;
 use log::info;
+use rs4a_fimage::{archive::read_info_json, info::ImageInfo};
 use rs4a_vapix::apis::{
     basic_device_info_1::GetAllUnrestrictedPropertiesRequest,
     firmware_management_1::{AutoCommit, FactoryDefaultMode},
@@ -34,14 +37,15 @@ pub struct InstallCommand {
     profile: rs4a_device_manager::Profile,
 }
 
-fn version_from_firmware_path(path: &Path) -> anyhow::Result<Version> {
-    let version_dir = path
-        .parent()
-        .and_then(|p| p.file_name())
-        .and_then(|s| s.to_str())
-        .context("Could not extract version directory from firmware path")?;
-    let dotted = version_dir.replace('_', ".");
-    Version::parse(&dotted).with_context(|| format!("Could not parse version from '{version_dir}'"))
+/// The version an image installs, according to the image itself.
+fn version_from_firmware(path: &Path) -> anyhow::Result<Version> {
+    let file = File::open(path).with_context(|| format!("Failed to open {}", path.display()))?;
+    let info: ImageInfo = read_info_json(BufReader::new(file))
+        .with_context(|| format!("Failed to read the metadata in {}", path.display()))?
+        .parse()
+        .with_context(|| format!("Failed to parse the metadata in {}", path.display()))?;
+    Version::parse(&info.release)
+        .with_context(|| format!("Could not parse a version from release {:?}", info.release))
 }
 
 impl InstallCommand {
@@ -98,7 +102,7 @@ impl InstallCommand {
         let firmware_path = PathBuf::from(firmware_output.trim_end_matches('\n'));
         info!("Firmware resolved to {}", firmware_path.display());
 
-        let target = version_from_firmware_path(&firmware_path)?;
+        let target = version_from_firmware(&firmware_path)?;
         let factory_default_mode = match target.cmp(&current) {
             Ordering::Less => {
                 info!("Target {target} < current {current}: downgrade with factory default");

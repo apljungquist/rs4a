@@ -17,6 +17,7 @@ semver = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 
 rs4a-device-manager = { workspace = true }
+rs4a-fimage = { workspace = true }
 rs4a-firmware-inventory = { workspace = true }
 rs4a-bin-utils = { workspace = true }
 rs4a-vapix = { workspace = true, features = ["clap"] }
