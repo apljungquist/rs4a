@@ -1,9 +1,3 @@
-+ unset RUST_LOG
-+ unset AXIS_DEVICE_IP
-+ unset AXIS_DEVICE_PASS
-+ unset AXIS_DEVICE_USER
-+ unset AXIS_DEVICE_HTTP_PORT
-+ unset AXIS_DEVICE_HTTPS_PORT
 + device-manager help
 Usage: device-manager <COMMAND>
 

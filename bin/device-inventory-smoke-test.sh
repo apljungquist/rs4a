@@ -8,6 +8,7 @@ export DEVICE_INVENTORY_LOCATION=$(mktemp -d)
 export DEVICE_INVENTORY_OFFLINE=true
 
 set -x
+
 device-inventory load < "${DB_SNAPSHOT}"
 device-inventory dump > "${DB_SNAPSHOT}"
 device-inventory add local 192.168.0.90 root pass

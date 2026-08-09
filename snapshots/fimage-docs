@@ -1,4 +1,3 @@
-+ unset RUST_LOG
 + fimage help
 Usage: fimage <COMMAND>
 

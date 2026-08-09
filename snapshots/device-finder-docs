@@ -1,4 +1,3 @@
-+ unset RUST_LOG
 + device-finder help
 Usage: device-finder [COMMAND]
 

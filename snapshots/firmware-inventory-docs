@@ -1,4 +1,3 @@
-+ unset RUST_LOG
 + firmware-inventory help
 Usage: firmware-inventory [OPTIONS] <COMMAND>
 

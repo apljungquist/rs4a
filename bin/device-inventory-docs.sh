@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
-set -eux
+set -eu
+
 unset RUST_LOG
+unset AXIS_DEVICE_HTTPS_SELF_SIGNED
+
+set -x
 
 # Special commands in alphabetical order
 device-inventory help
