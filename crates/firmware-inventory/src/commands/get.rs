@@ -2,13 +2,13 @@ use std::{collections::BTreeSet, fmt::Write, fs};
 
 use anyhow::{bail, Context};
 use log::info;
-use semver::Version;
 
 use crate::{
     authenticated_client,
     db::Database,
     track::{self, Selector},
     version,
+    version::Version,
 };
 
 const MPQT_BASE_URL: &str = "https://www.axis.com/ftp/pub/axis/software/MPQT/";
@@ -71,10 +71,10 @@ impl GetCommand {
             };
 
             let candidates = version::parse_versions(versions);
-            let semvers: Vec<_> = candidates.iter().map(|(_, v)| v.clone()).collect();
+            let parsed: Vec<_> = candidates.iter().map(|(_, v)| v).collect();
 
-            let Some(req) = selector.resolve(&semvers) else {
-                let available = track::available_tracks(&semvers);
+            let Some(req) = selector.resolve(&parsed) else {
+                let available = track::available_tracks(&parsed);
                 let available = if available.is_empty() {
                     "none".to_string()
                 } else {
@@ -86,16 +86,16 @@ impl GetCommand {
                 );
             };
 
-            let (version_str, semver) = candidates
-                .into_iter()
-                .filter(|(_, v)| req.matches(v))
+            let (version_str, version) = candidates
+                .iter()
+                .filter(|(_, v)| v.matches(&req))
                 .max_by(|(_, a), (_, b)| a.cmp(b))
                 .with_context(|| {
                     format!("No version of {product} matched {}", selector.describe())
                 })?;
 
-            info!("Best match: {product} {semver} ({version_str})");
-            resolved.push((product.clone(), version_str.to_string(), semver));
+            info!("Best match: {product} {version} ({version_str})");
+            resolved.push((product.clone(), version_str.to_string(), version.clone()));
         }
 
         // A pattern may be given twice, or two patterns may resolve to the same firmware; fetch it
