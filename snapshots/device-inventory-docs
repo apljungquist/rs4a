@@ -1,4 +1,3 @@
-+ unset RUST_LOG
 + device-inventory help
 Usage: device-inventory [OPTIONS] <COMMAND>
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
-set -eux
+set -eu
+
 unset RUST_LOG
+
+set -x
 
 # Special commands in alphabetical order
 firmware-inventory help
