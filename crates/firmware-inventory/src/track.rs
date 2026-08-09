@@ -4,7 +4,9 @@ use std::{
 };
 
 use anyhow::{anyhow, bail};
-use semver::{Comparator, Op, Prerelease, Version, VersionReq};
+use semver::{Comparator, Op, Prerelease, VersionReq};
+
+use crate::version::Version;
 
 /// An AXIS OS long-term support track.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -68,15 +70,15 @@ pub enum Track {
 
 impl Track {
     /// The version requirement matching this track.
-    fn resolve(self, versions: &[Version]) -> Option<VersionReq> {
+    fn resolve(self, versions: &[&Version]) -> Option<VersionReq> {
         match self {
             Self::Active => {
                 let req = req_line(ACTIVE_MAJOR, None);
-                versions.iter().any(|v| req.matches(v)).then_some(req)
+                versions.iter().any(|v| v.matches(&req)).then_some(req)
             }
             Self::Lts(t) => {
                 let req = req_line(t.major, Some(t.minor));
-                versions.iter().any(|v| req.matches(v)).then_some(req)
+                versions.iter().any(|v| v.matches(&req)).then_some(req)
             }
             Self::LatestLts => {
                 debug_assert!(
@@ -89,7 +91,7 @@ impl Track {
                 LTS_TRACKS
                     .iter()
                     .map(|t| req_line(t.major, Some(t.minor)))
-                    .find(|req| versions.iter().any(|v| req.matches(v)))
+                    .find(|req| versions.iter().any(|v| v.matches(req)))
             }
         }
     }
@@ -135,7 +137,7 @@ impl FromStr for Track {
 }
 
 /// Which tracks have firmware for a product, for use in error messages.
-pub(crate) fn available_tracks(versions: &[Version]) -> Vec<String> {
+pub(crate) fn available_tracks(versions: &[&Version]) -> Vec<String> {
     let mut out = Vec::new();
     if Track::Active.resolve(versions).is_some() {
         out.push(format!("active ({ACTIVE_MAJOR}.x)"));
@@ -163,7 +165,7 @@ impl Selector {
     /// The matching version requirement for one product.
     ///
     /// Selecting nothing at all matches every version, which is what `list` without filters wants.
-    pub(crate) fn resolve(&self, versions: &[Version]) -> Option<VersionReq> {
+    pub(crate) fn resolve(&self, versions: &[&Version]) -> Option<VersionReq> {
         match (&self.version, self.track) {
             (Some(req), _) => Some(req.clone()),
             (None, Some(track)) => track.resolve(versions),
@@ -194,8 +196,8 @@ mod tests {
 
     fn best(track: Track, raw: &[&str]) -> Option<Version> {
         let versions = versions(raw);
-        let req = track.resolve(&versions)?;
-        versions.into_iter().filter(|v| req.matches(v)).max()
+        let req = track.resolve(&versions.iter().collect::<Vec<_>>())?;
+        versions.into_iter().filter(|v| v.matches(&req)).max()
     }
 
     #[test]
@@ -272,7 +274,7 @@ mod tests {
     fn available_tracks_names_only_tracks_with_firmware() {
         let versions = versions(&["10_12_239", "11_9_1", "11_11_152"]);
         assert_eq!(
-            available_tracks(&versions),
+            available_tracks(&versions.iter().collect::<Vec<_>>()),
             ["lts2024 (11.11.x)", "lts2022 (10.12.x)"]
         );
     }
