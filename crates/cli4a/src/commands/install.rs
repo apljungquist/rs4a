@@ -39,6 +39,9 @@ pub struct InstallCommand {
 }
 
 /// The version an image installs, according to the image itself.
+///
+/// The path an image is cached under is a naming convention of our own, and one that cannot hold
+/// every release it is given; the `info.json` inside the image is what the device will run.
 fn version_from_firmware(path: &Path) -> anyhow::Result<Version> {
     let file = File::open(path).with_context(|| format!("Failed to open {}", path.display()))?;
     let info: ImageInfo = read_info_json(BufReader::new(file))
@@ -68,10 +71,7 @@ impl InstallCommand {
             .await?
             .property_list;
         let current = props.parse_version()?;
-        let model = match props.prod_nbr {
-            s if s == "P8815-2" => "P8815-2_3D_People_Counter".to_string(),
-            s => s,
-        };
+        let model = props.prod_nbr;
         info!("Device model: {model}, version: {current}");
 
         let product = glob::Pattern::new(&model)
@@ -81,9 +81,7 @@ impl InstallCommand {
             inventory: inventory.clone(),
             offline,
             command: rs4a_firmware_inventory::Commands::Update(
-                rs4a_firmware_inventory::UpdateCommand {
-                    product: product.clone(),
-                },
+                rs4a_firmware_inventory::UpdateCommand {},
             ),
         };
         update_cli.exec().await?;

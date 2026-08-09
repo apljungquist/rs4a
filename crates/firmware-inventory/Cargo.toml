@@ -18,12 +18,13 @@ clap = { workspace = true, features = ["derive", "env"] }
 dirs = { workspace = true }
 glob = { workspace = true }
 log = { workspace = true }
-regex = { workspace = true }
+quick-xml = { workspace = true }
 reqwest = { workspace = true, features = ["json", "http2", "rustls-tls"] }
 semver = { workspace = true, features = ["serde"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
+url = { workspace = true, features = ["serde"] }
 
 rs4a-authentication = { workspace = true }
 rs4a-bin-utils = { workspace = true }

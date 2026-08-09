@@ -5,13 +5,9 @@ use log::info;
 
 use crate::{
     authenticated_client,
-    db::Database,
+    db::{Database, FileUrl},
     track::{self, Selector},
-    version,
-    version::Version,
 };
-
-const MPQT_BASE_URL: &str = "https://www.axis.com/ftp/pub/axis/software/MPQT/";
 
 #[derive(Clone, Debug, clap::Args)]
 #[command(group(clap::ArgGroup::new("get_selector").required(true).args(["version", "track"])))]
@@ -26,21 +22,20 @@ pub struct GetCommand {
 async fn download(
     client: &reqwest::Client,
     db: &Database,
-    product: &str,
-    version: &str,
+    fileurl: &FileUrl,
 ) -> anyhow::Result<()> {
-    let url = format!("{MPQT_BASE_URL}{product}/{version}/{product}_{version}.bin");
+    let url = fileurl.url()?;
     info!("Downloading {url}");
 
     let response = client
-        .get(&url)
+        .get(url)
         .send()
         .await?
         .error_for_status()
         .context("Failed to download firmware")?;
     let bytes = response.bytes().await?;
 
-    let path = db.firmware_path(product, version);
+    let path = db.firmware_path(fileurl);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).context("Failed to create firmware directory")?;
     }
@@ -55,9 +50,12 @@ impl GetCommand {
 
         // Resolve every pattern before fetching anything, so that a pattern that cannot be
         // satisfied is reported before any bytes are spent on the ones before it.
-        let mut resolved: Vec<(String, String, Version)> = Vec::new();
+        let mut resolved: Vec<FileUrl> = Vec::new();
         for pattern in &products {
-            let matching: Vec<_> = index.iter().filter(|(p, _)| pattern.matches(p)).collect();
+            let matching: Vec<_> = index
+                .iter()
+                .filter(|(p, _)| pattern.matches(p.as_str()))
+                .collect();
             let (product, versions) = match matching.as_slice() {
                 [] => bail!("No indexed products matched {pattern:?}. Run update first."),
                 [pair] => *pair,
@@ -70,11 +68,10 @@ impl GetCommand {
                 }
             };
 
-            let candidates = version::parse_versions(versions);
-            let parsed: Vec<_> = candidates.iter().map(|(_, v)| v).collect();
+            let candidates: Vec<_> = versions.keys().collect();
 
-            let Some(req) = selector.resolve(&parsed) else {
-                let available = track::available_tracks(&parsed);
+            let Some(req) = selector.resolve(&candidates) else {
+                let available = track::available_tracks(&candidates);
                 let available = if available.is_empty() {
                     "none".to_string()
                 } else {
@@ -86,31 +83,30 @@ impl GetCommand {
                 );
             };
 
-            let (version_str, version) = candidates
+            // The versions are sorted, so the last one matching the requirement is the best.
+            let (version, fileurl) = versions
                 .iter()
-                .filter(|(_, v)| v.matches(&req))
-                .max_by(|(_, a), (_, b)| a.cmp(b))
+                .rfind(|(v, _)| v.matches(&req))
                 .with_context(|| {
                     format!("No version of {product} matched {}", selector.describe())
                 })?;
 
-            info!("Best match: {product} {version} ({version_str})");
-            resolved.push((product.clone(), version_str.to_string(), version.clone()));
+            info!("Best match: {product} {version}");
+            resolved.push(fileurl.clone());
         }
 
-        // A pattern may be given twice, or two patterns may resolve to the same firmware; fetch it
-        // once and report it once per pattern.
-        let missing: BTreeSet<(&str, &str)> = resolved
+        // A pattern may be given twice, or two patterns may resolve to the same image -- as the
+        // products sharing one do -- so fetch it once and report it once per pattern.
+        let missing: BTreeSet<&FileUrl> = resolved
             .iter()
-            .filter(|(p, v, _)| !db.firmware_path(p, v).exists())
-            .map(|(p, v, _)| (p.as_str(), v.as_str()))
+            .filter(|f| !db.firmware_path(f).exists())
             .collect();
 
         if !missing.is_empty() {
             if offline {
                 let paths: Vec<_> = missing
                     .iter()
-                    .map(|(p, v)| db.firmware_path(p, v).display().to_string())
+                    .map(|f| db.firmware_path(f).display().to_string())
                     .collect();
                 bail!(
                     "Firmware not cached and offline mode is enabled: {}",
@@ -123,14 +119,14 @@ impl GetCommand {
                 .context("No login session, please run the login command")?;
             let client = authenticated_client(cookie)?;
 
-            for (product, version_str) in missing {
-                download(&client, db, product, version_str).await?;
+            for fileurl in missing {
+                download(&client, db, fileurl).await?;
             }
         }
 
         let mut out = String::new();
-        for (product, version_str, _) in &resolved {
-            writeln!(out, "{}", db.firmware_path(product, version_str).display())?;
+        for fileurl in &resolved {
+            writeln!(out, "{}", db.firmware_path(fileurl).display())?;
         }
         Ok(out)
     }

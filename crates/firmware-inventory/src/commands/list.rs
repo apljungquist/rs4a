@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use anyhow::bail;
 
-use crate::{db::Database, track::Selector, version};
+use crate::{db::Database, track::Selector};
 
 #[derive(Clone, Debug, clap::Args)]
 #[command(group(clap::ArgGroup::new("list_selector").args(["version", "track"])))]
@@ -20,7 +20,9 @@ impl ListCommand {
         let index = db.read_index()?;
         let matching: Vec<_> = index
             .iter()
-            .filter(|(p, _)| products.is_empty() || products.iter().any(|pat| pat.matches(p)))
+            .filter(|(p, _)| {
+                products.is_empty() || products.iter().any(|pat| pat.matches(p.as_str()))
+            })
             .collect();
 
         if matching.is_empty() {
@@ -29,20 +31,17 @@ impl ListCommand {
 
         let mut out = String::new();
         for (product, versions) in matching {
-            let candidates = version::parse_versions(versions);
-            let parsed: Vec<_> = candidates.iter().map(|(_, v)| v).collect();
+            let candidates: Vec<_> = versions.keys().collect();
 
             // A product with nothing on the selected track is simply not listed; unlike `get`,
             // this command is a filter and has no single product it could fail on behalf of.
-            let Some(req) = selector.resolve(&parsed) else {
+            let Some(req) = selector.resolve(&candidates) else {
                 continue;
             };
 
-            let mut entries: Vec<_> = candidates.iter().filter(|(_, v)| v.matches(&req)).collect();
-            entries.sort_by(|(_, a), (_, b)| b.cmp(a));
-
-            for (version_str, version) in entries {
-                let cached = if db.firmware_path(product, version_str).exists() {
+            // The versions are sorted ascending; list the newest first.
+            for (version, fileurl) in versions.iter().rev().filter(|(v, _)| v.matches(&req)) {
+                let cached = if db.firmware_path(fileurl).exists() {
                     " [cached]"
                 } else {
                     ""

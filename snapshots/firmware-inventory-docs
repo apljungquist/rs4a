@@ -4,7 +4,7 @@ Usage: firmware-inventory [OPTIONS] <COMMAND>
 
 Commands:
   login        Login to access firmware downloads
-  update       Update the local firmware index for products matching a glob
+  update       Update the local firmware index from the upstream catalog
   list         List indexed firmware versions, showing which are cached locally
   get          Get firmware for each product, matching a version requirement or a track
   completions  Print a completion file for the given shell
@@ -63,12 +63,9 @@ Options:
   -c, --cookie               Store an existing session
   -h, --help                 Print help
 + firmware-inventory help update
-Update the local firmware index for products matching a glob
+Update the local firmware index from the upstream catalog
 
-Usage: firmware-inventory update <PRODUCT>
-
-Arguments:
-  <PRODUCT>  Glob pattern to match product names
+Usage: firmware-inventory update
 
 Options:
   -h, --help  Print help

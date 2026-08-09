@@ -116,7 +116,7 @@ Usage: firmware-inventory [OPTIONS] <COMMAND>
 
 Commands:
   login        Login to access firmware downloads
-  update       Update the local firmware index for products matching a glob
+  update       Update the local firmware index from the upstream catalog
   list         List indexed firmware versions, showing which are cached locally
   get          Get firmware for each product, matching a version requirement or a track
   completions  Print a completion file for the given shell

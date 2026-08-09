@@ -186,11 +186,10 @@ impl Selector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::version_from_underscore;
 
     fn versions(raw: &[&str]) -> Vec<Version> {
         raw.iter()
-            .map(|v| version_from_underscore(v).unwrap())
+            .map(|v| Version::try_coerced(v).unwrap())
             .collect()
     }
 
@@ -222,7 +221,7 @@ mod tests {
     #[test]
     fn active_picks_the_newest_release_on_the_active_major() {
         assert_eq!(
-            best(Track::Active, &["11_11_152", "12_5_35", "12_11_68"]),
+            best(Track::Active, &["11.11.152", "12.5.35", "12.11.68"]),
             Some(Version::new(12, 11, 68))
         );
     }
@@ -231,21 +230,21 @@ mod tests {
     fn active_ignores_a_major_the_table_does_not_yet_call_active() {
         // Until ACTIVE_MAJOR is bumped, firmware from a newer major is not the active track.
         assert_eq!(
-            best(Track::Active, &["12_11_68", "13_0_1"]),
+            best(Track::Active, &["12.11.68", "13.0.1"]),
             Some(Version::new(12, 11, 68))
         );
     }
 
     #[test]
     fn active_fails_rather_than_falling_back_for_a_product_that_never_got_it() {
-        assert_eq!(best(Track::Active, &["10_12_239", "11_11_152"]), None);
+        assert_eq!(best(Track::Active, &["10.12.239", "11.11.152"]), None);
     }
 
     #[test]
     fn lts_is_a_minor_line_not_a_major() {
         // 11.9 is on the same major as the 2024 LTS track but is not on the track itself.
         assert_eq!(
-            best(Track::LatestLts, &["11_9_1", "11_11_152", "12_5_35"]),
+            best(Track::LatestLts, &["11.9.1", "11.11.152", "12.5.35"]),
             Some(Version::new(11, 11, 152))
         );
     }
@@ -253,11 +252,11 @@ mod tests {
     #[test]
     fn latest_lts_prefers_the_newest_track_the_product_has() {
         assert_eq!(
-            best(Track::LatestLts, &["11_11_152", "12_11_68"]),
+            best(Track::LatestLts, &["11.11.152", "12.11.68"]),
             Some(Version::new(12, 11, 68))
         );
         assert_eq!(
-            best(Track::LatestLts, &["10_12_239", "11_11_152"]),
+            best(Track::LatestLts, &["10.12.239", "11.11.152"]),
             Some(Version::new(11, 11, 152))
         );
     }
@@ -265,14 +264,14 @@ mod tests {
     #[test]
     fn latest_lts_falls_back_for_a_product_too_old_for_the_newest_track() {
         assert_eq!(
-            best(Track::LatestLts, &["9_80_3", "10_12_239"]),
+            best(Track::LatestLts, &["9.80.3", "10.12.239"]),
             Some(Version::new(10, 12, 239))
         );
     }
 
     #[test]
     fn available_tracks_names_only_tracks_with_firmware() {
-        let versions = versions(&["10_12_239", "11_9_1", "11_11_152"]);
+        let versions = versions(&["10.12.239", "11.9.1", "11.11.152"]);
         assert_eq!(
             available_tracks(&versions.iter().collect::<Vec<_>>()),
             ["lts2024 (11.11.x)", "lts2022 (10.12.x)"]

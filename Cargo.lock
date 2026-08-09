@@ -2391,7 +2391,7 @@ dependencies = [
  "dirs",
  "glob",
  "log",
- "regex",
+ "quick-xml",
  "reqwest",
  "rs4a-authentication",
  "rs4a-bin-utils",
@@ -2400,6 +2400,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "url",
 ]
 
 [[package]]

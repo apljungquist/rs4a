@@ -2,11 +2,6 @@ use std::fmt::{self, Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
-/// Parse a version the way it appears in archive directory names, e.g. `12_11_68`.
-pub(crate) fn version_from_underscore(s: &str) -> Option<Version> {
-    Version::try_coerced(&s.replace('_', ".")).ok()
-}
-
 /// The version of a firmware release.
 ///
 /// Firmware revisions aren't strict semver:
@@ -49,14 +44,4 @@ impl Display for Version {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
-}
-
-/// Parse each version string, pairing it with its parsed form.
-///
-/// NB: drops unparseable version strings.
-pub(crate) fn parse_versions(versions: &[String]) -> Vec<(&str, Version)> {
-    versions
-        .iter()
-        .filter_map(|v| Some((v.as_str(), version_from_underscore(v)?)))
-        .collect()
 }
