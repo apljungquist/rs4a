@@ -15,6 +15,7 @@ use crate::db::Database;
 pub use crate::{
     commands::{get::GetCommand, list::ListCommand, login::LoginCommand, update::UpdateCommand},
     track::{Selector, Track},
+    version::Version,
 };
 
 pub(crate) fn authenticated_client(cookie: SessionCookie) -> anyhow::Result<reqwest::Client> {

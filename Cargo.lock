@@ -2397,6 +2397,7 @@ dependencies = [
  "rs4a-bin-utils",
  "rs4a-vlt",
  "semver",
+ "serde",
  "serde_json",
  "tokio",
 ]

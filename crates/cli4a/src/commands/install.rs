@@ -8,11 +8,12 @@ use std::{
 use anyhow::Context;
 use log::info;
 use rs4a_fimage::{archive::read_info_json, info::ImageInfo};
+use rs4a_firmware_inventory::Version;
 use rs4a_vapix::apis::{
     basic_device_info_1::GetAllUnrestrictedPropertiesRequest,
     firmware_management_1::{AutoCommit, FactoryDefaultMode},
 };
-use semver::{Version, VersionReq};
+use semver::VersionReq;
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct InstallCommand {
@@ -44,7 +45,7 @@ fn version_from_firmware(path: &Path) -> anyhow::Result<Version> {
         .with_context(|| format!("Failed to read the metadata in {}", path.display()))?
         .parse()
         .with_context(|| format!("Failed to parse the metadata in {}", path.display()))?;
-    Version::parse(&info.release)
+    Version::try_coerced(&info.release)
         .with_context(|| format!("Could not parse a version from release {:?}", info.release))
 }
 
@@ -103,7 +104,7 @@ impl InstallCommand {
         info!("Firmware resolved to {}", firmware_path.display());
 
         let target = version_from_firmware(&firmware_path)?;
-        let factory_default_mode = match target.cmp(&current) {
+        let factory_default_mode = match target.semver().cmp(&current) {
             Ordering::Less => {
                 info!("Target {target} < current {current}: downgrade with factory default");
                 Some(FactoryDefaultMode::Hard)
