@@ -6,8 +6,8 @@
       // Keep the version in sync with:
       // - .github/workflows/fuzz.yaml
       // - .github/workflows/main.yaml
-      // - nix/acap-native-sdk.nix
       // - bin/create-venv.sh
+      // - flake.nix
       "TAG": "12.11.0-armv7hf-ubuntu24.04"
     }
   }
