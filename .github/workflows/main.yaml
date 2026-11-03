@@ -65,7 +65,7 @@ jobs:
           # - .devcontainer/acap-native-sdk-12-armv7hf/devcontainer.json
           # - .github/workflows/fuzz.yaml
           # - bin/create-venv.sh
-          # - nix/acap-native-sdk.nix
+          # - flake.nix
           - 12.11.0-aarch64-ubuntu24.04
           - 12.11.0-armv7hf-ubuntu24.04
           - 13.0.0-preview-aarch64-ubuntu25.10

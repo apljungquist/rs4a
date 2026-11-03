@@ -11,7 +11,7 @@ set -eu
 # - .devcontainer/acap-native-sdk-12-armv7hf/devcontainer.json
 # - .github/workflows/fuzz.yaml
 # - .github/workflows/main.yaml
-# - nix/acap-native-sdk.nix.
+# - flake.nix
 SDK_IMAGE="axisecp/acap-native-sdk"
 SDK_VERSION="12.11.0"
 SDK_UBUNTU="ubuntu24.04"

@@ -8,6 +8,10 @@
       inputs.rust-overlay.follows = "rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix4a = {
+      url = "github:apljungquist/nix4a";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/25.11";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -20,6 +24,7 @@
       self,
       flake-utils,
       mkhelp,
+      nix4a,
       nixpkgs,
       rust-overlay,
       ...
@@ -37,7 +42,13 @@
           cargo = rustToolchain;
         };
         buildWorkspaceMember = dir: pkgs.callPackage ./nix/default.nix { inherit rustPlatform dir; };
-        acap-native-sdk = pkgs.callPackage ./nix/acap-native-sdk.nix { };
+        # The version is whatever the pinned `nix4a` provides; keep it in sync with:
+        # - .devcontainer/acap-native-sdk-12-aarch64/devcontainer.json
+        # - .devcontainer/acap-native-sdk-12-armv7hf/devcontainer.json
+        # - .github/workflows/fuzz.yaml
+        # - .github/workflows/main.yaml
+        # - bin/create-venv.sh
+        acap-native-sdk = nix4a.packages.${system}.acap-native-sdk-12;
       in
       {
 
