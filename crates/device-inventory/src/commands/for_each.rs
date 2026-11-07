@@ -30,7 +30,7 @@ impl ForEachCommand {
         sorted_devices.sort_by(|(left, _), (right, _)| left.cmp(right));
         for (alias, device) in sorted_devices {
             let mut cmd = std::process::Command::new(&program);
-            cmd.args(&arguments).envs(
+            cmd.args(&arguments).env("AXIS_DEVICE_ALIAS", &alias).envs(
                 envs(&device)
                     .into_iter()
                     .flat_map(|(k, v)| v.map(|v| (k, v))),

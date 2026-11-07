@@ -1,11 +1,11 @@
 + device-inventory load
 + device-inventory dump
 + device-inventory add local 192.168.0.90 root pass
-+ device-inventory for-each --alias 'l*' sh -- -c 'echo $AXIS_DEVICE_IP'
-192.168.0.90
-+ device-inventory for-each sh -- -c 'echo $AXIS_DEVICE_IP'
-192.168.0.90
-195.60.68.14
++ device-inventory for-each --alias 'l*' sh -- -c 'echo $AXIS_DEVICE_ALIAS $AXIS_DEVICE_IP'
+local 192.168.0.90
++ device-inventory for-each sh -- -c 'echo $AXIS_DEVICE_ALIAS $AXIS_DEVICE_IP'
+local 192.168.0.90
+vlt-8 195.60.68.14
 + device-inventory activate --alias local
 export AXIS_DEVICE_IP=192.168.0.90
 export AXIS_DEVICE_USER=root
