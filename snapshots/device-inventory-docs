@@ -102,9 +102,7 @@ Usage: device-inventory list [OPTIONS]
 
 Options:
       --probe
-          Probe devices for properties not indexed by the source.
-          
-          Note that devices found only in the VLT source are not probed.
+          Probe devices for properties not indexed by the source
 
       --mdns
           Consider devices from mDNS
@@ -112,7 +110,7 @@ Options:
           [env: DI_MDNS=]
 
       --vlt
-          Consider loans and devices from the VLT
+          Consider loans from the VLT
           
           [env: DI_VLT=]
 
@@ -142,11 +140,6 @@ Options:
           Consider only devices with a matching model.
           
           Accepts a glob pattern.
-
-  -s, --status <STATUS>
-          Consider only devices with a matching status
-          
-          [possible values: connected, on-loan]
 
   -h, --help
           Print help (see a summary with '-h')

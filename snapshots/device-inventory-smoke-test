@@ -22,15 +22,15 @@ export AXIS_DEVICE_HTTPS_SELF_SIGNED=0
 ++ AXIS_DEVICE_PASS=pass
 ++ AXIS_DEVICE_HTTPS_SELF_SIGNED=0
 + device-inventory list
-PRIORITIES  STATUS  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
-0,1                 local                                         192.168.0.90
-1                   vlt-8                                         195.60.68.14
+PRIORITIES  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
+0,1         local                                         192.168.0.90
+1           vlt-8                                         195.60.68.14
 + device-inventory remove --alias local
 + device-inventory list
-PRIORITIES  STATUS  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
-0                                                                 192.168.0.90
-1                   vlt-8                                         195.60.68.14
+PRIORITIES  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
+0                                                         192.168.0.90
+1           vlt-8                                         195.60.68.14
 + device-inventory remove --alias 'vlt-*'
 + device-inventory list
-PRIORITIES  STATUS  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
-0                                                                 192.168.0.90
+PRIORITIES  ALIAS  SERIAL  MODEL  ARCHITECTURE  FIRMWARE  HOST
+0                                                         192.168.0.90
