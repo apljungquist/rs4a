@@ -14,8 +14,8 @@ use crate::{
     db::Database,
     db_vlt,
     fusion::{
-        active_fingerprint, inventory_fingerprint, loan_fingerprint, mdns_fingerprint,
-        other_fingerprint, Device, DeviceFilterParser,
+        active_fingerprint, inventory_fingerprint, loan_fingerprint, mdns_fingerprint, Device,
+        DeviceFilterParser,
     },
     mdns_source,
 };
@@ -27,7 +27,6 @@ struct Table {
     hosts: Vec<String>,
     models: Vec<String>,
     serials: Vec<String>,
-    statuses: Vec<String>,
     priorities: Vec<String>,
 }
 
@@ -40,7 +39,6 @@ impl Table {
             hosts: vec!["HOST".to_string()],
             models: vec!["MODEL".to_string()],
             serials: vec!["SERIAL".to_string()],
-            statuses: vec!["STATUS".to_string()],
             priorities: vec!["PRIORITIES".to_string()],
         }
     }
@@ -60,11 +58,6 @@ impl Table {
             .push(row.model().unwrap_or_default().to_string());
         self.serials
             .push(row.serial().map(|s| s.to_string()).unwrap_or_default());
-        self.statuses.push(
-            row.status()
-                .map(|s| s.as_str().to_string())
-                .unwrap_or_default(),
-        );
         self.priorities.push(
             row.priorities()
                 .into_iter()
@@ -82,7 +75,6 @@ impl Table {
             hosts,
             models,
             serials,
-            statuses,
             priorities,
         } = self;
 
@@ -91,22 +83,19 @@ impl Table {
         let architecture_width = 1 + architectures.iter().map(|s| s.len()).max().unwrap();
         let model_width = 1 + models.iter().map(|s| s.len()).max().unwrap();
         let serial_width = 1 + serials.iter().map(|s| s.len()).max().unwrap();
-        let status_width = 1 + statuses.iter().map(|s| s.len()).max().unwrap();
         let priority_width = 1 + priorities.iter().map(|s| s.len()).max().unwrap();
 
-        for (((((((priority, alias), model), host), architecture), serial), status), firmware) in
-            priorities
-                .into_iter()
-                .zip(aliases.into_iter())
-                .zip(models.into_iter())
-                .zip(hosts.into_iter())
-                .zip(architectures.into_iter())
-                .zip(serials.into_iter())
-                .zip(statuses.into_iter())
-                .zip(firmware.into_iter())
+        for ((((((priority, alias), model), host), architecture), serial), firmware) in priorities
+            .into_iter()
+            .zip(aliases.into_iter())
+            .zip(models.into_iter())
+            .zip(hosts.into_iter())
+            .zip(architectures.into_iter())
+            .zip(serials.into_iter())
+            .zip(firmware.into_iter())
         {
             println!(
-                "{priority:priority_width$} {status:status_width$} {alias:alias_width$} {serial:serial_width$} {model:model_width$} {architecture:architecture_width$} {firmware:firmware_width$} {host}"
+                "{priority:priority_width$} {alias:alias_width$} {serial:serial_width$} {model:model_width$} {architecture:architecture_width$} {firmware:firmware_width$} {host}"
             );
         }
     }
@@ -165,14 +154,12 @@ async fn probe_device(
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ListCommand {
     /// Probe devices for properties not indexed by the source.
-    ///
-    /// Note that devices found only in the VLT source are not probed.
     #[arg(long)]
     probe: bool,
     /// Consider devices from mDNS.
     #[arg(long, env = "DI_MDNS")]
     mdns: bool,
-    /// Consider loans and devices from the VLT.
+    /// Consider loans from the VLT.
     #[arg(long, env = "DI_VLT")]
     vlt: bool,
     /// Accept self-signed HTTPS certificates when probing devices.
@@ -237,7 +224,7 @@ impl ListCommand {
             true => Some(
                 db_vlt::client(db, offline)
                     .await?
-                    .context("VLT is not configured, skipping VLT devices")?,
+                    .context("VLT is not configured, skipping VLT loans")?,
             ),
             false => None,
         };
@@ -288,18 +275,6 @@ impl ListCommand {
                         warn!("Could not get properties for a device: {e:?}");
                     }
                 }
-            }
-        }
-
-        if let Some(client) = vlt_client.as_ref() {
-            for d in requests::devices().send(client).await? {
-                let f = other_fingerprint(&d);
-                match devices.entry(f) {
-                    Entry::Occupied(mut e) => e.get_mut().add_vlt_device(d)?,
-                    Entry::Vacant(e) => {
-                        e.insert(Device::from_vlt_device(d)?);
-                    }
-                };
             }
         }
 
