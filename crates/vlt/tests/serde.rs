@@ -1,4 +1,6 @@
-use rs4a_vlt::responses::{parse_data, Device, Loan, NewLoan, ParseError};
+use rs4a_vlt::responses::{
+    parse_data, Device, DeviceStatus, Loan, LoanStatus, NewLoan, ParseError,
+};
 
 #[test]
 fn invalid_json_returns_invalid_json_error() {

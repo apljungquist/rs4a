@@ -159,6 +159,59 @@ impl From<DeviceStatus> for u8 {
     }
 }
 
+#[non_exhaustive]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, clap::ValueEnum, serde::Deserialize, serde::Serialize,
+)]
+#[serde(try_from = "u8", into = "u8")]
+pub enum LoanStatus {
+    Active = 1,
+    Expired = 2,
+    Cancelled = 3,
+    Scheduled = 4,
+    /// The device is installing the requested version and is not yet usable.
+    ///
+    /// This is transient, and lasts for a minute or two at the start of a loan.
+    UpgradingOs = 5,
+}
+
+impl LoanStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LoanStatus::Active => "active",
+            LoanStatus::Expired => "expired",
+            LoanStatus::Cancelled => "cancelled",
+            LoanStatus::Scheduled => "scheduled",
+            LoanStatus::UpgradingOs => "upgrading-os",
+        }
+    }
+}
+
+impl TryFrom<u8> for LoanStatus {
+    type Error = String;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(LoanStatus::Active),
+            2 => Ok(LoanStatus::Expired),
+            3 => Ok(LoanStatus::Cancelled),
+            4 => Ok(LoanStatus::Scheduled),
+            5 => Ok(LoanStatus::UpgradingOs),
+            _ => Err(format!("Unknown loan status: {value}")),
+        }
+    }
+}
+
+impl From<LoanStatus> for u8 {
+    #[expect(
+        clippy::as_conversions,
+        reason = "better than the alternative: enumerating variants and risking it goes out of sync"
+    )]
+    fn from(status: LoanStatus) -> Self {
+        status as u8
+    }
+}
+
 fn serialize_datetime<S>(v: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -340,7 +393,7 @@ pub struct NewLoan {
     pub password: String,
     #[serde(serialize_with = "serialize_datetime")]
     pub started_at: DateTime<Utc>,
-    pub status: DeviceStatus,
+    pub status: LoanStatus,
     pub username: String,
     pub loanable: NewLoanable,
     pub meta: Vec<String>,
@@ -362,7 +415,7 @@ pub struct Loan {
     pub selected_firmware: FirmwareVersion,
     #[serde(serialize_with = "serialize_datetime")]
     pub started_at: DateTime<Utc>,
-    pub status: DeviceStatus,
+    pub status: LoanStatus,
     pub username: String,
 }
 
