@@ -82,12 +82,23 @@ Run a command with environment variables set for each device
 Usage: device-inventory for-each [OPTIONS] <PROGRAM> [ARGUMENTS]...
 
 Arguments:
-  <PROGRAM>       Program to run
-  [ARGUMENTS]...  Arguments to pass to the program
+  <PROGRAM>
+          Program to run
+
+  [ARGUMENTS]...
+          Arguments to pass to the program
 
 Options:
-  -a, --alias <ALIAS>  The alias of the devices to target
-  -h, --help           Print help
+  -a, --alias <ALIAS>
+          The alias of the devices to target
+
+      --no-fail-fast
+          Run the program for all devices regardless of failure.
+          
+          Without this flag, execution stops after the first device for which the program fails.
+
+  -h, --help
+          Print help (see a summary with '-h')
 + device-inventory help sync
 Sync devices from the VLT to the local inventory
 
