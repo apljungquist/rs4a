@@ -3,7 +3,6 @@ mod db;
 mod db_vlt;
 mod env;
 mod fusion;
-mod mdns_source;
 mod psst;
 mod vlt;
 

@@ -27,7 +27,7 @@ The tools in this project are split into two categories:
   These are designed to be composable, robust, and to afford the user more flexibility than porcelain programs.
 
 Note that some programs don't yet fit this model.
-The biggest deviation is in `device-inventory`, which integrates with mDNS and the VLT in addition to its own database.
+The biggest deviation is in `device-inventory`, which can sync devices from the VLT into its own database.
 The status of `firmware-inventory` is also a bit murky as it integrates with an online service and its own database.
 
 ### Porcelain programs

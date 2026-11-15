@@ -115,16 +115,6 @@ Options:
       --probe
           Probe devices for properties not indexed by the source
 
-      --mdns
-          Consider devices from mDNS
-          
-          [env: DI_MDNS=]
-
-      --vlt
-          Consider loans from the VLT
-          
-          [env: DI_VLT=]
-
       --https-self-signed
           Accept self-signed HTTPS certificates when probing devices
           

@@ -4,18 +4,13 @@ use anyhow::bail;
 use rs4a_vapix::apis::basic_device_info_1::{
     Architecture, RestrictedProperties, UnrestrictedProperties,
 };
-use rs4a_vlt::responses::{DeviceArchitecture, Loan};
+use rs4a_vlt::responses::DeviceArchitecture;
 use semver::{BuildMetadata, Version, VersionReq};
 use url::Host;
 
-use crate::mdns_source;
-
 pub struct Device {
     basic_device_info: Option<UnrestrictedProperties>,
-    dut_device: Option<rs4a_dut::Device>,
     inventory_device: Option<(String, crate::db::Device)>,
-    mdns_device: Option<mdns_source::Device>,
-    vlt_loan: Option<Loan>,
     firmware: Option<Version>,
     architecture: Option<DeviceArchitecture>,
 }
@@ -51,53 +46,15 @@ fn coerce_firmware_version(s: &str) -> anyhow::Result<Version> {
 impl Device {
     pub fn cmp(lhs: &Self, other: &Self) -> Ordering {
         lhs.priority()
-            .partial_cmp(&other.priority())
-            .or_else(|| lhs.host().partial_cmp(&other.host()))
-            .or_else(|| lhs.http_port().partial_cmp(&other.http_port()))
-            .unwrap_or(Ordering::Equal)
+            .cmp(&other.priority())
+            .then_with(|| lhs.host().cmp(&other.host()))
+            .then_with(|| lhs.http_port().cmp(&other.http_port()))
     }
 
-    pub fn from_dut_device(device: rs4a_dut::Device) -> Self {
-        Self {
-            basic_device_info: None,
-            dut_device: Some(device),
-            inventory_device: None,
-            mdns_device: None,
-            vlt_loan: None,
-            firmware: None,
-            architecture: None,
-        }
-    }
     pub fn from_inventory_device(alias: String, device: crate::db::Device) -> Self {
         Self {
             basic_device_info: None,
-            dut_device: None,
             inventory_device: Some((alias, device)),
-            mdns_device: None,
-            vlt_loan: None,
-            firmware: None,
-            architecture: None,
-        }
-    }
-    pub fn from_mdns_device(device: crate::mdns_source::Device) -> Self {
-        Self {
-            basic_device_info: None,
-            dut_device: None,
-            inventory_device: None,
-            mdns_device: Some(device),
-            vlt_loan: None,
-            firmware: None,
-            architecture: None,
-        }
-    }
-
-    pub fn from_vlt_loan(loan: Loan) -> Self {
-        Self {
-            basic_device_info: None,
-            dut_device: None,
-            inventory_device: None,
-            vlt_loan: Some(loan),
-            mdns_device: None,
             firmware: None,
             architecture: None,
         }
@@ -106,25 +63,15 @@ impl Device {
     pub fn fingerprint(&self) -> String {
         let Self {
             basic_device_info: _,
-            dut_device: from_active,
             inventory_device: from_inventory,
-            vlt_loan: from_loan,
-            mdns_device,
             firmware: _,
             architecture: _,
         } = self;
-        let from_active = from_active.as_ref().map(active_fingerprint);
         let from_inventory = from_inventory
             .as_ref()
             .map(|(_, d)| inventory_fingerprint(d));
-        let from_loan = from_loan.as_ref().map(loan_fingerprint);
-        let mdns_device = mdns_device.as_ref().map(mdns_fingerprint);
 
-        from_active
-            .or(from_inventory)
-            .or(from_loan)
-            .or(mdns_device)
-            .expect("At least one field is some")
+        from_inventory.expect("At least one field is some")
     }
 
     pub fn add_unrestricted_properties(
@@ -165,27 +112,12 @@ impl Device {
         Ok(())
     }
 
-    pub fn replace_dut_device(&mut self, device: rs4a_dut::Device) -> Option<rs4a_dut::Device> {
-        self.dut_device.replace(device)
-    }
-
     pub fn replace_inventory_device(
         &mut self,
         alias: String,
         device: crate::db::Device,
     ) -> Option<(String, crate::db::Device)> {
         self.inventory_device.replace((alias, device))
-    }
-
-    pub fn replace_vlt_loan(&mut self, loan: Loan) -> Option<Loan> {
-        self.vlt_loan.replace(loan)
-    }
-
-    pub fn replace_mdns_device(
-        &mut self,
-        device: mdns_source::Device,
-    ) -> Option<mdns_source::Device> {
-        self.mdns_device.replace(device)
     }
 
     pub(crate) fn alias(&self) -> Option<Cow<str>> {
@@ -204,16 +136,7 @@ impl Device {
     }
 
     pub(crate) fn host(&self) -> Host {
-        if let Some(d) = self.dut_device.as_ref() {
-            return d.host.clone();
-        }
         if let Some((_, d)) = self.inventory_device.as_ref() {
-            return d.host.clone();
-        }
-        if let Some(d) = self.vlt_loan.as_ref() {
-            return d.host();
-        }
-        if let Some(d) = self.mdns_device.as_ref() {
             return d.host.clone();
         }
         unreachable!()
@@ -228,13 +151,7 @@ impl Device {
     /// - `Some(Some(p))`: The port has been remapped to `p`
     pub fn http_port(&self) -> Option<Option<u16>> {
         let mut values = Vec::new();
-        values.extend(self.dut_device.as_ref().map(|d| d.http_port));
         values.extend(self.inventory_device.as_ref().map(|(_, d)| d.http_port));
-        values.extend(self.vlt_loan.as_ref().map(|d| match d.http_port() {
-            80 => None,
-            p => Some(p),
-        }));
-        values.extend(self.mdns_device.as_ref().map(|_| None));
         values.dedup();
         debug_assert!(values.len() < 2);
         values.pop()
@@ -249,13 +166,7 @@ impl Device {
     /// - `Some(Some(p))`: The port has been remapped to `p`
     pub fn https_port(&self) -> Option<Option<u16>> {
         let mut values = Vec::new();
-        values.extend(self.dut_device.as_ref().map(|d| d.https_port));
         values.extend(self.inventory_device.as_ref().map(|(_, d)| d.https_port));
-        values.extend(self.vlt_loan.as_ref().map(|d| match d.https_port() {
-            443 => None,
-            p => Some(p),
-        }));
-        values.extend(self.mdns_device.as_ref().map(|_| None));
         values.dedup();
         debug_assert!(values.len() < 2);
         values.pop()
@@ -263,13 +174,11 @@ impl Device {
 
     pub fn username(&self) -> Option<String> {
         let mut values = Vec::new();
-        values.extend(self.dut_device.as_ref().map(|d| d.username.to_string()));
         values.extend(
             self.inventory_device
                 .as_ref()
                 .map(|(_, d)| d.username.clone()),
         );
-        values.extend(self.vlt_loan.as_ref().map(|d| d.username.clone()));
         values.dedup();
         debug_assert!(values.len() < 2);
         values.pop()
@@ -277,14 +186,12 @@ impl Device {
 
     pub fn password(&self) -> Option<String> {
         let mut values = Vec::new();
-        values.extend(self.dut_device.as_ref().map(|d| d.password.clone()));
         // TODO: Consider propagating the password type or removing it altogether.
         values.extend(
             self.inventory_device
                 .as_ref()
                 .map(|(_, d)| d.password.dangerous_reveal().to_string()),
         );
-        values.extend(self.vlt_loan.as_ref().map(|d| d.password.clone()));
         values.dedup();
         debug_assert!(values.len() < 2);
         values.pop()
@@ -294,25 +201,13 @@ impl Device {
         if let Some(d) = self.basic_device_info.as_ref() {
             return Some(d.prod_short_name.as_str().into());
         }
-        if let Some(d) = self.vlt_loan.as_ref() {
-            return Some(d.loanable.model.as_str().into());
-        }
         None
     }
 
     pub fn priorities(&self) -> Vec<u8> {
         let mut priorities = Vec::new();
-        if self.dut_device.is_some() {
-            priorities.push(0)
-        }
         if self.inventory_device.is_some() {
             priorities.push(1)
-        }
-        if self.vlt_loan.is_some() {
-            priorities.push(2)
-        }
-        if self.mdns_device.is_some() {
-            priorities.push(3)
         }
         priorities
     }
@@ -327,9 +222,6 @@ impl Device {
     pub(crate) fn serial(&self) -> Option<Cow<str>> {
         if let Some(d) = self.basic_device_info.as_ref() {
             return Some(d.serial_number.as_str().into());
-        }
-        if let Some(d) = self.mdns_device.as_ref() {
-            return Some(d.to_serial().into());
         }
         None
     }
@@ -461,19 +353,6 @@ impl DeviceFilter {
     }
 }
 
-pub fn active_fingerprint(d: &rs4a_dut::Device) -> String {
-    format!("{}:{}", d.host, d.http_port.unwrap_or(80))
-}
-
 pub fn inventory_fingerprint(d: &crate::db::Device) -> String {
     format!("{}:{}", d.host, d.http_port.unwrap_or(80))
-}
-
-pub fn loan_fingerprint(d: &Loan) -> String {
-    format!("{}:{}", d.host(), d.http_port())
-}
-
-pub fn mdns_fingerprint(d: &mdns_source::Device) -> String {
-    // If the device is on the local network, then there probably isn't any port mapping going on.
-    format!("{}:80", d.host)
 }

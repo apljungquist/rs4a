@@ -6,18 +6,12 @@ use rs4a_vapix::apis::basic_device_info_1::{
     AllProperties, GetAllPropertiesRequest, GetAllUnrestrictedPropertiesRequest,
     RestrictedProperties, UnrestrictedProperties,
 };
-use rs4a_vlt::requests;
 use tokio::task::JoinSet;
 use url::Host;
 
 use crate::{
     db::Database,
-    db_vlt,
-    fusion::{
-        active_fingerprint, inventory_fingerprint, loan_fingerprint, mdns_fingerprint, Device,
-        DeviceFilterParser,
-    },
-    mdns_source,
+    fusion::{inventory_fingerprint, Device, DeviceFilterParser},
 };
 
 struct Table {
@@ -156,12 +150,6 @@ pub struct ListCommand {
     /// Probe devices for properties not indexed by the source.
     #[arg(long)]
     probe: bool,
-    /// Consider devices from mDNS.
-    #[arg(long, env = "DI_MDNS")]
-    mdns: bool,
-    /// Consider loans from the VLT.
-    #[arg(long, env = "DI_VLT")]
-    vlt: bool,
     /// Accept self-signed HTTPS certificates when probing devices.
     #[arg(long, env = "AXIS_DEVICE_HTTPS_SELF_SIGNED", value_parser = clap::builder::BoolishValueParser::new())]
     https_self_signed: bool,
@@ -173,26 +161,12 @@ impl ListCommand {
     pub async fn exec(self, db: &Database, offline: bool) -> anyhow::Result<()> {
         let Self {
             probe,
-            mdns,
-            vlt,
             https_self_signed,
             device_filter,
         } = self;
         let device_filter = device_filter.into_filter()?;
 
         let mut devices: HashMap<String, Device> = HashMap::new();
-
-        if let Some(d) = rs4a_dut::Device::from_env()? {
-            let f = active_fingerprint(&d);
-            match devices.entry(f) {
-                Entry::Occupied(mut e) => {
-                    e.get_mut().replace_dut_device(d);
-                }
-                Entry::Vacant(e) => {
-                    e.insert(Device::from_dut_device(d));
-                }
-            };
-        }
 
         for (a, d) in db.read_devices()? {
             let f = inventory_fingerprint(&d);
@@ -204,42 +178,6 @@ impl ListCommand {
                     e.insert(Device::from_inventory_device(a, d));
                 }
             };
-        }
-
-        if mdns {
-            for d in mdns_source::discover_devices().await? {
-                let f = mdns_fingerprint(&d);
-                match devices.entry(f) {
-                    Entry::Occupied(mut e) => {
-                        e.get_mut().replace_mdns_device(d);
-                    }
-                    Entry::Vacant(e) => {
-                        e.insert(Device::from_mdns_device(d));
-                    }
-                };
-            }
-        }
-
-        let vlt_client = match vlt {
-            true => Some(
-                db_vlt::client(db, offline)
-                    .await?
-                    .context("VLT is not configured, skipping VLT loans")?,
-            ),
-            false => None,
-        };
-
-        if let Some(client) = vlt_client.as_ref() {
-            for d in requests::loans().send(client).await? {
-                let f = loan_fingerprint(&d);
-                match devices.entry(f) {
-                    Entry::Occupied(mut e) => e.get_mut().replace_vlt_loan(d),
-                    Entry::Vacant(e) => {
-                        e.insert(Device::from_vlt_loan(d));
-                        None
-                    }
-                };
-            }
         }
 
         if probe {
